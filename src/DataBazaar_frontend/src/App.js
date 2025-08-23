@@ -1,5 +1,5 @@
 import { html, render } from 'lit-html';
-import { DataBazaar_backend } from 'declarations/DataBazaar_backend';
+import { backend as DataBazaar_backend, createActor } from 'declarations/backend';
 import logo from './logo2.svg';
 
 class App {
@@ -12,7 +12,13 @@ class App {
   #handleSubmit = async (e) => {
     e.preventDefault();
     const name = document.getElementById('name').value;
-    this.greeting = await DataBazaar_backend.greet(name);
+    if (DataBazaar_backend) {
+      this.greeting = await DataBazaar_backend.get_data(Number(name));
+    } else {
+      // fallback to creating an actor if backend is undefined
+      const actor = createActor(process.env.CANISTER_ID_BACKEND);
+      this.greeting = await actor.get_data(Number(name));
+    }
     this.#render();
   };
 

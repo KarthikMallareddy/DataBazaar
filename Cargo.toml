@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "src/DataBazaar_backend"
+    "canisters/backend"
 ]
 resolver = "2"
