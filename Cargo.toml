@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "src/DataBazaar_backend"
+]
+resolver = "2"

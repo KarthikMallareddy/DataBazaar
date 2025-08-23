@@ -1,0 +1,27 @@
+{
+  "canisters": {
+    "DataBazaar_backend": {
+      "candid": "src/DataBazaar_backend/DataBazaar_backend.did",
+      "package": "DataBazaar_backend",
+      "type": "rust"
+    },
+    "DataBazaar_frontend": {
+      "dependencies": [
+        "DataBazaar_backend"
+      ],
+      "source": [
+        "src/DataBazaar_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "DataBazaar_frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
