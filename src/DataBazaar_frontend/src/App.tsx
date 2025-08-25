@@ -1,6 +1,7 @@
 import { FormEvent, useState, useEffect } from 'react';
 import './index.scss';
-import { backend } from 'declarations/backend';
+// @ts-ignore
+import { backend, createActor, canisterId } from '../declarations/backend';
 import { EnvironmentBanner } from './components/EnvironmentBanner';
 import { splitFileIntoChunks, encryptChunk, generateEncryptionKey, hashChunk } from './utils/chunking';
 import { Principal } from '@dfinity/principal';
@@ -28,8 +29,21 @@ interface UserProfile {
 export default function App() {
   const [view, setView] = useState<'menu' | 'browse' | 'add'>('menu');
   const [csvFiles, setCsvFiles] = useState<string[]>([]);
+
+  // Function to get a working backend actor
+  const getBackendActor = () => {
+    if (backend) {
+      return backend;
+    }
+    if (canisterId) {
+      return createActor(canisterId);
+    }
+    throw new Error('Backend canister not available');
+  };
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [addSuccess, setAddSuccess] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   // Add this state for canister databases
   const [canisterDatabases, setCanisterDatabases] = useState<any[]>([]);
@@ -46,24 +60,18 @@ export default function App() {
   // Fetch all canister databases using canister API
   async function fetchCanisterDatabases() {
     try {
-      // Prefer fetching all items in one call
-      if (typeof (backend as any).list_data_items === 'function') {
-        const items = await (backend as any).list_data_items();
-        // items: Array<[bigint, DataItem]>
-        const mapped = items.map(([id, item]: [bigint, any]) => ({ id: Number(id), ...item }));
-        setCanisterDatabases(mapped);
-        return;
-      }
-      // Fallback: use list_data_ids then fetch each
-      if (typeof (backend as any).list_data_ids === 'function') {
-        const ids: bigint[] = await (backend as any).list_data_ids();
-        const results: any[] = [];
-        for (const id of ids) {
-          try {
-            const res = await backend.get_data(id);
-            if (res && res.Ok) results.push({ id: Number(id), ...res.Ok });
-          } catch {}
-        }
+      const backendActor = getBackendActor();
+      // Use the new get_listings method
+      const listings: any = await (backendActor as any).get_listings();
+      if (listings && Array.isArray(listings)) {
+        const results = listings.map((listing: any) => ({
+          id: Number(listing.id),
+          name: listing.name,
+          description: listing.description,
+          price: Number(listing.price),
+          owner: listing.owner,
+          created_at: Number(listing.created_at)
+        }));
         setCanisterDatabases(results);
         return;
       }
@@ -191,38 +199,49 @@ export default function App() {
               <h2>Add Database</h2>
               <form className="add-db-form" onSubmit={async e => {
                 e.preventDefault();
-                if (!selectedFile) return;
-                // Read file as ArrayBuffer
-                const arrayBuffer = await selectedFile.arrayBuffer();
-                const bytes = Array.from(new Uint8Array(arrayBuffer));
-                // Prepare metadata
-                const metadata = {
-                  category: 'csv',
-                  tags: [],
-                  file_type: 'csv',
-                  total_chunks: 1,
-                  total_size: BigInt(bytes.length),
-                  created_at: BigInt(Date.now()),
-                  updated_at: BigInt(Date.now()),
-                };
-                // Create listing
-                const listingRes = await backend.create_data_listing(selectedFile.name, selectedFile.name, BigInt(0), metadata);
-                if (listingRes && listingRes.Ok !== undefined) {
-                  const dataId = listingRes.Ok;
-                  // Upload chunk
-                  const chunk = {
-                    chunk_index: 0,
-                    encrypted_data: bytes,
-                    chunk_hash: [],
-                  };
-                  await backend.upload_data_chunk(dataId, chunk);
+                setAddError(null);
+                if (!selectedFile) {
+                  setAddError('Please select a CSV file');
+                  return;
+                }
+                try {
+                  setAdding(true);
+                  const form = e.currentTarget as HTMLFormElement;
+                  const name = (form.querySelector('#dbName') as HTMLInputElement)?.value?.trim() || selectedFile.name;
+                  const desc = (form.querySelector('#dbDesc') as HTMLInputElement)?.value?.trim() || selectedFile.name;
+
+                  // Read file as ArrayBuffer
+                  const arrayBuffer = await selectedFile.arrayBuffer();
+                  const bytes = Array.from(new Uint8Array(arrayBuffer));
+                  
+                  // Get backend actor
+                  const backendActor = getBackendActor();
+                  
+                  // Create listing with the new backend API
+                  const listingRes: any = await (backendActor as any).create_data_listing(name, desc, BigInt(100));
+                  if (!listingRes || !listingRes.Ok) {
+                    throw new Error(listingRes?.Err || 'create_data_listing failed');
+                  }
+                  const dataId: bigint = listingRes.Ok;
+                  
+                  // Upload the CSV data to the canister using the bytes already read above
+                  const uploadRes: any = await (backendActor as any).upload_data(Number(dataId), Array.from(bytes));
+                  if (!uploadRes || !uploadRes.Ok) {
+                    throw new Error(uploadRes?.Err || 'upload_data failed');
+                  }
+                  
+                  console.log('Dataset uploaded successfully:', uploadRes.Ok);
+                  
                   setAddSuccess(true);
                   setTimeout(() => setAddSuccess(false), 2000);
                   setView('menu');
                   setSelectedFile(null);
                   fetchCanisterDatabases();
-                } else {
-                  alert('Failed to add database');
+                } catch (err: any) {
+                  console.error(err);
+                  setAddError(err?.message || 'Failed to add database');
+                } finally {
+                  setAdding(false);
                 }
               }}>
                 <div className="form-group">
@@ -238,8 +257,9 @@ export default function App() {
                   <input id="dbFile" name="dbFile" type="file" accept=".csv" required onChange={e => setSelectedFile(e.target.files?.[0] || null)} />
                   {selectedFile && <div style={{ marginTop: 8, color: '#555' }}>Selected: {selectedFile.name}</div>}
                 </div>
-                <button className="primary-btn" type="submit">Add Database</button>
-                {addSuccess && <div style={{ color: 'var(--success-color)', marginTop: 10 }}>Database added (demo)!</div>}
+                <button className="primary-btn" type="submit" disabled={adding}>{adding ? 'Adding…' : 'Add Database'}</button>
+                {addError && <div style={{ color: 'var(--danger-color)', marginTop: 10 }}>{addError}</div>}
+                {addSuccess && <div style={{ color: 'var(--success-color)', marginTop: 10 }}>Database added!</div>}
               </form>
             </div>
           )}
