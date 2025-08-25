@@ -5,11 +5,12 @@
   },
   "name": "databazaar",
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "vite build",
     "prebuild": "npm run prebuild --workspaces --if-present",
     "pretest": "npm run prebuild --workspaces --if-present",
     "start": "npm start --workspaces --if-present",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "dev": "vite"
   },
   "type": "module",
   "workspaces": [
@@ -19,7 +20,7 @@
   "description": "Welcome to your new `DataBazaar` project and to the Internet Computer development community. By default, creating a new project adds this README and some template files to your project directory. You can edit these template files to customize your project and to include your own code to speed up the development cycle.",
   "main": "index.js",
   "dependencies": {
-  "@dfinity/candid": "^2.1.3",
+    "@dfinity/candid": "^2.1.3",
     "ansi-styles": "^4.3.0",
     "aria-query": "^5.3.2",
     "assertion-error": "^2.0.1",
@@ -72,7 +73,6 @@
     "jest-util": "^30.0.5",
     "js-tokens": "^4.0.0",
     "json-text-sequence": "^0.1.1",
-    "lit-html": "^2.8.0",
     "lodash": "^4.17.21",
     "loupe": "^3.2.1",
     "magic-string": "^0.30.18",
@@ -88,13 +88,14 @@
     "picomatch": "^4.0.3",
     "postcss": "^8.5.6",
     "pretty-format": "^30.0.5",
-    "react-is": "^18.3.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+  "react-is": "^18.3.1",
     "readable-stream": "^3.6.2",
     "readdirp": "^4.1.2",
     "redent": "^3.0.0",
     "rollup": "^3.29.5",
     "safe-buffer": "^5.2.1",
-    "sass": "^1.90.0",
     "siginfo": "^2.0.0",
     "simple-cbor": "^0.4.1",
     "slash": "^3.0.0",
@@ -112,10 +113,8 @@
     "tinyspy": "^3.0.2",
     "to-regex-range": "^5.0.1",
     "tr46": "^0.0.3",
-    "typescript": "^5.9.2",
     "undici-types": "^7.10.0",
     "util-deprecate": "^1.0.2",
-    "vite": "^4.5.14",
     "vite-node": "^2.1.9",
     "vite-plugin-environment": "^1.1.3",
     "vitest": "^2.1.9",
@@ -125,5 +124,14 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.1",
+    "lit-html": "^3.3.1",
+    "sass": "^1.90.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.3"
+  }
 }

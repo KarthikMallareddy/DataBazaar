@@ -3,14 +3,16 @@
   "canisters": {
     "backend": {
       "type": "rust",
-      "package": "backend",
-  "candid": "canisters/backend/backend_provided.did",
-      "path": "canisters/backend"
+      "package": "DataBazaar_backend",
+      "candid": "src/DataBazaar_backend/DataBazaar_backend.did"
     },
     "frontend": {
-      "type": "assets",
-      "source": ["src/DataBazaar_frontend/dist"],
-      "dependencies": ["backend"]
+      "dependencies": ["backend"],
+      "frontend": {
+        "entrypoint": "src/DataBazaar_frontend/index.html"
+      },
+      "source": ["src/DataBazaar_frontend/assets", "src/DataBazaar_frontend/dist"],
+      "type": "assets"
     }
   },
   "defaults": {
@@ -18,5 +20,6 @@
       "args": "",
       "packtool": ""
     }
-  }
+  },
+  "output_env_file": ".env"
 }

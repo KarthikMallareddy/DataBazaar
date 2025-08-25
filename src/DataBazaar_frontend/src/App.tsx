@@ -1,10 +1,11 @@
 import { FormEvent, useState, useEffect } from 'react';
 import './index.scss';
 // @ts-ignore
-import { backend, createActor, canisterId } from '../declarations/backend';
+import { backend, createActor, canisterId } from './declarations/backend';
 import { EnvironmentBanner } from './components/EnvironmentBanner';
 import { splitFileIntoChunks, encryptChunk, generateEncryptionKey, hashChunk } from './utils/chunking';
 import { Principal } from '@dfinity/principal';
+import { Home, Database, Plus, Download, Upload, BarChart3 } from 'lucide-react';
 
 interface DataState {
   dataId: string;
@@ -40,6 +41,46 @@ export default function App() {
     }
     throw new Error('Backend canister not available');
   };
+
+  // Function to download a database from the canister
+  const downloadDatabase = async (databaseId: number, databaseName: string) => {
+    try {
+      const backendActor = getBackendActor();
+      const result: any = await (backendActor as any).get_listing(BigInt(databaseId));
+      
+      if (!result || !result.Ok) {
+        throw new Error(result?.Err || 'Failed to fetch database');
+      }
+      
+      const listing = result.Ok;
+      const dataContent = listing.data_content;
+      
+      if (!dataContent || dataContent.length === 0) {
+        throw new Error('No data content found for this database');
+      }
+      
+      // Convert blob to Uint8Array and then to string
+      const uint8Array = new Uint8Array(dataContent);
+      const csvContent = new TextDecoder('utf-8').decode(uint8Array);
+      
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${databaseName}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      console.log('Database downloaded successfully');
+    } catch (error) {
+      console.error('Failed to download database:', error);
+      alert(`Failed to download database: ${error}`);
+    }
+  };
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [addSuccess, setAddSuccess] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -86,16 +127,18 @@ export default function App() {
 
   // Sidebar menu items
   const menuItems = [
-    { label: 'Home', icon: '🏠', onClick: () => setView('menu') },
-    { label: 'Datasets', icon: '🗂️', onClick: () => setView('browse') },
-    { label: 'Add Database', icon: '➕', onClick: () => setView('add') },
+    { label: 'Home', icon: <Home size={18} />, onClick: () => setView('menu') },
+    { label: 'Datasets', icon: <Database size={18} />, onClick: () => setView('browse') },
+    { label: 'Add Database', icon: <Plus size={18} />, onClick: () => setView('add') },
     // Add more items as needed
   ];
 
   return (
     <div className="app-layout" style={{ display: 'flex', minHeight: '100vh' }}>
       <aside className="sidebar" style={{ width: 220, background: 'var(--primary-color)', borderRight: '1px solid #e0e0e0', padding: '2rem 0 2rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', color: '#fff' }}>
-        <div className="sidebar-logo" style={{ fontWeight: 'bold', fontSize: 22, marginBottom: 32, marginLeft: 12 }}>DataBazaar</div>
+        <div className="sidebar-logo">
+          <img src="/logo.png" alt="DataBazaar" />
+        </div>
         <nav style={{ width: '100%' }}>
           {menuItems.map((item, idx) => {
             const isActive = view === (item.label === 'Home' ? 'menu' : item.label === 'Datasets' ? 'browse' : 'add');
@@ -103,27 +146,35 @@ export default function App() {
               <button
                 key={item.label}
                 onClick={item.onClick}
+                className={isActive ? 'active' : ''}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   width: '90%',
-                  background: isActive ? 'rgba(255,255,255,0.18)' : 'transparent',
-                  border: isActive ? '2px solid #fff' : '2px solid transparent',
+                  background: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
+                  border: 'none',
                   outline: 'none',
-                  padding: '0.85rem 1.2rem',
-                  fontSize: 17,
-                  color: '#fff',
+                  padding: '0.875rem 1rem',
+                  fontSize: 15,
+                  fontWeight: 500,
+                  color: isActive ? 'white' : 'rgba(255, 255, 255, 0.8)',
                   cursor: 'pointer',
                   borderRadius: 8,
-                  marginBottom: 10,
-                  fontWeight: isActive ? 'bold' : 'normal',
-                  boxShadow: isActive ? '0 2px 8px 0 rgba(0,0,0,0.08)' : 'none',
-                  transition: 'background 0.2s, border 0.2s',
+                  marginBottom: 8,
+                  transition: 'all 0.2s ease',
                 }}
-                onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
-                onMouseOut={e => (e.currentTarget.style.background = isActive ? 'rgba(255,255,255,0.18)' : 'transparent')}
+                onMouseOver={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.color = 'white';
+                  e.currentTarget.style.transform = 'translateX(4px)';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.background = isActive ? 'rgba(255,255,255,0.15)' : 'transparent';
+                  e.currentTarget.style.color = isActive ? 'white' : 'rgba(255, 255, 255, 0.8)';
+                  e.currentTarget.style.transform = 'translateX(0)';
+                }}
               >
-                <span style={{ fontSize: 22, marginRight: 16 }}>{item.icon}</span>
+                <span style={{ fontSize: 18, marginRight: 12, display: 'flex', alignItems: 'center' }}>{item.icon}</span>
                 {item.label}
               </button>
             );
@@ -138,28 +189,76 @@ export default function App() {
         </header>
         <main className="main-content" style={{ flex: 1, padding: '2rem 2rem' }}>
           {view === 'menu' && (
-            <div className="menu">
-              <h2>Welcome to DataBazaar</h2>
-              <div className="menu-options">
-                <button className="primary-btn" onClick={() => setView('browse')}>Browse Databases</button>
-                <button className="primary-btn" onClick={() => setView('add')}>Add Database</button>
+            <div className="menu-view">
+              <h1>Welcome to DataBazaar</h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '18px', marginBottom: '3rem' }}>
+                Your decentralized marketplace for data assets
+              </p>
+              
+              <div className="dashboard-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                <div style={{ background: 'var(--background-color)', padding: '1.5rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ background: 'var(--gradient-primary)', borderRadius: 'var(--radius-lg)', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Database size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>Total Datasets</h3>
+                    <p style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-color)' }}>{canisterDatabases.length}</p>
+                  </div>
+                </div>
+                <div style={{ background: 'var(--background-color)', padding: '1.5rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ background: 'var(--gradient-success)', borderRadius: 'var(--radius-lg)', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <BarChart3 size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>Sample Data</h3>
+                    <p style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-color)' }}>{csvFiles.length}</p>
+                  </div>
+                </div>
               </div>
-              <div className="sample-databases">
-                <h3>Sample Databases (CSV)</h3>
-                <ul>
-                  {csvFiles.map((file, idx) => (
-                    <li key={idx} className="sample-db-card">
-                      <a href={`/samples/${encodeURIComponent(file)}`} download>{file}</a>
-                    </li>
-                  ))}
-                </ul>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ background: 'var(--background-color)', padding: '2rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                    <div style={{ background: 'var(--gradient-accent)', borderRadius: 'var(--radius-lg)', padding: '0.75rem' }}>
+                      <Database size={24} color="white" />
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Browse Datasets</h3>
+                  </div>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Explore available datasets and download what you need</p>
+                  <button 
+                    className="primary-btn" 
+                    onClick={() => setView('browse')}
+                    style={{ width: '100%' }}
+                  >
+                    Browse Datasets
+                  </button>
+                </div>
+                
+                <div style={{ background: 'var(--background-color)', padding: '2rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                    <div style={{ background: 'var(--gradient-secondary)', borderRadius: 'var(--radius-lg)', padding: '0.75rem' }}>
+                      <Upload size={24} color="white" />
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600' }}>Upload Data</h3>
+                  </div>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Share your CSV datasets with the community</p>
+                  <button 
+                    className="primary-btn" 
+                    onClick={() => setView('add')}
+                    style={{ width: '100%' }}
+                  >
+                    Upload Dataset
+                  </button>
+                </div>
               </div>
             </div>
           )}
           {view === 'browse' && (
             <div className="browse-view">
-              <button className="secondary-btn" onClick={() => setView('menu')}>← Back to Menu</button>
-              <h2>Browse Databases (CSV)</h2>
+              <div className="view-header">
+                <h2>Browse Datasets</h2>
+                <button className="back-btn" onClick={() => setView('menu')}>← Back to Home</button>
+              </div>
               {/* Sample datasets from /public/samples */}
               <section style={{ marginTop: 20 }}>
                 <h3>Sample Datasets</h3>
@@ -182,22 +281,42 @@ export default function App() {
                 {canisterDatabases.length === 0 ? (
                   <div className="empty-hint">No canister databases yet. Add one from the "Add Database" tab.</div>
                 ) : (
-                  <ul>
+                  <div className="database-grid">
                     {canisterDatabases.map((db, idx) => (
-                      <li key={idx} className="sample-db-card">
-                        <strong>{db.name}</strong> (ID: {db.id})
-                      </li>
+                      <div key={idx} className="database-card">
+                        <div className="card-header">
+                          <div>
+                            <div className="card-title">{db.name}</div>
+                          </div>
+                          <div className="card-id">ID: {db.id}</div>
+                        </div>
+                        <div className="card-description">{db.description}</div>
+                        <div className="card-footer">
+                          <div className="card-price">{db.price} tokens</div>
+                          <button 
+                            className="download-btn"
+                            onClick={() => downloadDatabase(db.id, db.name)}
+                          >
+                            <Download size={16} />
+                            Download
+                          </button>
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </section>
             </div>
           )}
           {view === 'add' && (
             <div className="add-view">
-              <button className="secondary-btn" onClick={() => { setView('menu'); setAddSuccess(false); setSelectedFile(null); }}>← Back to Menu</button>
-              <h2>Add Database</h2>
-              <form className="add-db-form" onSubmit={async e => {
+              <div className="view-header">
+                <h2>Upload Dataset</h2>
+                <button className="back-btn" onClick={() => { setView('menu'); setAddSuccess(false); setSelectedFile(null); }}>← Back to Home</button>
+              </div>
+              
+              <div className="upload-form">
+                <form onSubmit={async e => {
                 e.preventDefault();
                 setAddError(null);
                 if (!selectedFile) {
@@ -243,7 +362,7 @@ export default function App() {
                 } finally {
                   setAdding(false);
                 }
-              }}>
+                }}>
                 <div className="form-group">
                   <label htmlFor="dbName">Database Name</label>
                   <input id="dbName" name="dbName" type="text" required placeholder="Enter database name" />
@@ -258,9 +377,10 @@ export default function App() {
                   {selectedFile && <div style={{ marginTop: 8, color: '#555' }}>Selected: {selectedFile.name}</div>}
                 </div>
                 <button className="primary-btn" type="submit" disabled={adding}>{adding ? 'Adding…' : 'Add Database'}</button>
-                {addError && <div style={{ color: 'var(--danger-color)', marginTop: 10 }}>{addError}</div>}
-                {addSuccess && <div style={{ color: 'var(--success-color)', marginTop: 10 }}>Database added!</div>}
-              </form>
+                  {addError && <div style={{ color: 'var(--error-color)', marginTop: 10 }}>{addError}</div>}
+                  {addSuccess && <div style={{ color: 'var(--success-color)', marginTop: 10 }}>Database added!</div>}
+                </form>
+              </div>
             </div>
           )}
         </main>
