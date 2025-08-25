@@ -138,6 +138,7 @@ export default function App() {
       <aside className="sidebar" style={{ width: 220, background: 'var(--primary-color)', borderRight: '1px solid #e0e0e0', padding: '2rem 0 2rem 0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', color: '#fff' }}>
         <div className="sidebar-logo">
           <img src="/logo.png" alt="DataBazaar" />
+          <span>DataBazaar</span>
         </div>
         <nav style={{ width: '100%' }}>
           {menuItems.map((item, idx) => {

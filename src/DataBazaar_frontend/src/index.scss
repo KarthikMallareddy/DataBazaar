@@ -82,16 +82,23 @@ body {
     font-weight: 700;
     font-size: 26px;
     margin-bottom: 3rem;
-    margin-left: 1.5rem;
+    margin-right: 1.5rem;
     color: white;
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     
     img {
-      height: 40px;
+      height: 48px;
       width: auto;
       filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+    
+    span {
+      font-size: 24px;
+      font-weight: 700;
     }
   }
   
