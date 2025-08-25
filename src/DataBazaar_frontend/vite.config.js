@@ -9,6 +9,7 @@ export default defineConfig({
   build: {
     emptyOutDir: true,
   },
+  publicDir: "public",
   optimizeDeps: {
     esbuildOptions: {
       define: {
@@ -24,13 +25,12 @@ export default defineConfig({
       },
     },
   },
-  publicDir: "assets",
   plugins: [
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
   ],
   resolve: {
-    alias: [
+  alias: [
       {
         find: "declarations",
         replacement: fileURLToPath(
@@ -38,6 +38,7 @@ export default defineConfig({
         ),
       },
     ],
-    dedupe: ['@dfinity/agent'],
+  // Ensure only one copy of React is used to avoid "Invalid hook call" errors
+  dedupe: ['@dfinity/agent', 'react', 'react-dom'],
   },
 });

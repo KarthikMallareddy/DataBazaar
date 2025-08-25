@@ -3,18 +3,27 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IC Hello Starter</title>
+  <title>DataBazaar</title>
+  <script>
+    // Pre-populate lit-html's issued warnings set to avoid the dev-mode spam in DevTools.
+    if (typeof window !== 'undefined') {
+      window.litIssuedWarnings = window.litIssuedWarnings || new Set();
+      window.litIssuedWarnings.add(
+        'Lit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.'
+      );
+    }
+  </script>
 </head>
 
 <body>
+  <div id="root"></div>
   <div class="browser-warning">
     ⚠️ If this page appears broken, try reloading. If the problem persists, try switching browsers; Chrome or
     Firefox are recommended.
   </div>
-  <div id="root"></div>
-  <script type="module" src="/src/main.js"></script>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 
 </html>
